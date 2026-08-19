@@ -309,6 +309,45 @@ button{font-family:inherit;}
 .qtr-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--ink2);}
 .qtr-legend span{display:flex;align-items:center;}
 .qtr-legend i{margin-right:5px;}
+
+/* ------------------------------- coaching queue --------------------------- */
+.fu-tabs{display:inline-flex;background:var(--track);border-radius:10px;padding:3px;gap:2px;margin-bottom:16px;}
+.fu-tab{border:0;background:transparent;padding:7px 15px;border-radius:8px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;}
+.fu-tab.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.fu-group-h{font-size:12px;font-weight:800;color:var(--pri);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px;}
+.fu-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.fu-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.fu-agent{font-weight:700;font-size:14px;}
+.fu-meta{font-size:12px;color:var(--ink2);}
+.fu-age{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-left:auto;}
+.fu-age.new{color:var(--meet-fg);background:var(--meet-bg);}
+.fu-age.warn{color:var(--part-fg);background:var(--part-bg);}
+.fu-age.old{color:var(--fail-fg);background:var(--fail-bg);}
+.fu-actions{display:flex;gap:8px;align-items:center;margin-top:11px;flex-wrap:wrap;}
+.fu-select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;font-family:inherit;background:var(--card);color:var(--ink);}
+.fu-note{margin-top:9px;width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;resize:vertical;min-height:44px;background:var(--card);color:var(--ink);}
+.fu-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.fu-status[data-s="Pending"]{background:var(--fail-bg);color:var(--fail-fg);}
+.fu-status[data-s="Scheduled"]{background:var(--part-bg);color:var(--part-fg);}
+.fu-status[data-s="Completed"]{background:var(--meet-bg);color:var(--meet-fg);}
+
+/* ------------------------------- calibration ------------------------------ */
+.calib-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 17px;margin-bottom:10px;cursor:pointer;transition:.15s;}
+.calib-card:hover{border-color:var(--pri);box-shadow:0 4px 14px rgba(15,23,41,.08);}
+.calib-title{font-weight:700;font-size:14px;}
+.calib-meta{font-size:12px;color:var(--ink2);margin-top:3px;}
+.calib-agree{font-size:18px;font-weight:800;letter-spacing:-.4px;}
+.participant-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--soft);font-size:13px;}
+.participant-row:last-child{border-bottom:0;}
+.part-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.part-pill.done{background:var(--meet-bg);color:var(--meet-fg);}
+.part-pill.wait{background:var(--soft);color:var(--mut);}
+.calib-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.calib-table th,.calib-table td{padding:9px 11px;border-bottom:1px solid var(--soft);text-align:left;}
+.calib-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);}
+.calib-cell{display:inline-flex;align-items:center;gap:5px;font-weight:700;padding:3px 9px;border-radius:7px;}
+.calib-agree-yes{background:var(--meet-bg);color:var(--meet-fg);}
+.calib-agree-no{background:var(--fail-bg);color:var(--fail-fg);}
 .imp-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 4px;border-bottom:1px solid var(--soft);}
 .imp-row:last-child{border-bottom:0;}
 .imp-dup{opacity:.55;}
@@ -457,7 +496,9 @@ function effectiveSchema(ev){return (ev&&ev.schemaSnapshot)?{channels:{[ev.chann
 /* =============================== STATE ==================================== */
 const S={schema:DEFAULT_SCHEMA,view:"evaluate",evals:[],draft:null,profileAgent:null,theme:"light",_timer:null,_saveT:null,
  session:null,loginStep:"name",loginName:"",loginErr:"",loginRemember:true,loginBusy:false,analyticsAgent:"",analyticsMonths:3,
- bulk:{agents:[],from:"",to:""},importPreview:null,importFileName:""};
+ bulk:{agents:[],from:"",to:""},importPreview:null,importFileName:"",
+ followups:[],followupFilter:"active",
+ calibrations:[],calibOpenId:null,calibDraft:{title:"",channel:"phone",participants:[]}};
 
 function makeDraft(){return{id:Date.now()+"-"+Math.random().toString(36).slice(2,7),createdAt:new Date().toISOString(),
  agent:"",evaluator:"",role:"",channel:"phone",account:"",interactionId:"",interactionDate:"",evalDate:new Date().toISOString().slice(0,10),responses:{},summary:"",status:"Draft",elapsed:0,feedback:null,openSecs:{}};}
@@ -470,6 +511,12 @@ async function boot(){
  const keys=await store.list("qa:eval:",true);const rows=[];
  for(const k of keys){const v=await store.get(k,true);if(v){try{rows.push(JSON.parse(v));}catch(e){}}}
  rows.sort((a,b)=>a.createdAt<b.createdAt?1:-1);S.evals=rows;
+ const fkeys=await store.list("qa:followup:",true);const frows=[];
+ for(const k of fkeys){const v=await store.get(k,true);if(v){try{frows.push(JSON.parse(v));}catch(e){}}}
+ frows.sort((a,b)=>a.createdAt<b.createdAt?1:-1);S.followups=frows;
+ const ckeys=await store.list("qa:calib:",true);const crows=[];
+ for(const k of ckeys){const v=await store.get(k,true);if(v){try{crows.push(JSON.parse(v));}catch(e){}}}
+ crows.sort((a,b)=>a.createdAt<b.createdAt?1:-1);S.calibrations=crows;
  render();
 }
 async function persistEval(ev){
@@ -482,37 +529,79 @@ async function persistEval(ev){
  const others=S.evals.filter(e=>e.id!==ev.id);S.evals=[ev,...others].sort((a,b)=>a.createdAt<b.createdAt?1:-1);
  await store.set("qa:eval:"+ev.id,JSON.stringify(ev),true);
  await store.del("qa:draft:"+ev.id,false);
+ await ensureFollowup(ev);
 }
 async function deleteEval(id){S.evals=S.evals.filter(e=>e.id!==id);await store.del("qa:eval:"+id,true);}
 async function saveSchema(s){S.schema=s;await store.set("qa:schema",JSON.stringify(s),true);}
 async function toggleTheme(){S.theme=S.theme==="light"?"dark":"light";document.documentElement.setAttribute("data-theme",S.theme);await store.set("qa:theme",S.theme);
  const b=document.getElementById("themebtn");if(b)b.innerHTML=ic(S.theme==="light"?"moon":"sun",15)+'<span>'+(S.theme==="light"?"Dark mode":"Light mode")+'</span>';}
 
+/* =============================== COACHING FOLLOW-UPS ========================
+   Any evaluation that lands in "Coaching" status (i.e. recommendation was
+   Follow-up) automatically gets a follow-up record so it doesn't get lost.
+   One active (non-Completed) follow-up per evaluation — if the evaluation is
+   edited and improves out of Coaching, the follow-up record simply stays as
+   history but a fresh one won't be created unless it drops back into Coaching. */
+async function persistFollowup(f){
+ const others=S.followups.filter(x=>x.id!==f.id);S.followups=[f,...others].sort((a,b)=>a.createdAt<b.createdAt?1:-1);
+ await store.set("qa:followup:"+f.id,JSON.stringify(f),true);
+}
+async function deleteFollowup(id){S.followups=S.followups.filter(f=>f.id!==id);await store.del("qa:followup:"+id,true);}
+async function ensureFollowup(ev){
+ if(ev.status!=="Coaching")return;
+ const existingActive=S.followups.find(f=>f.evalId===ev.id&&f.status!=="Completed");
+ if(existingActive)return;
+ const f={id:"fu-"+ev.id,evalId:ev.id,agent:ev.agent,channel:ev.channel,evalDate:ev.evalDate,finalPct:ev.finalPct,
+  createdAt:new Date().toISOString(),status:"Pending",scheduledDate:"",note:"",completedAt:null,completedBy:null};
+ await persistFollowup(f);
+}
+
+/* =============================== CALIBRATION SESSIONS ========================
+   Several evaluators independently score the same interaction using the
+   normal rubric; once submitted, the results are compared side by side to
+   measure inter-rater agreement. Answers stay hidden from other
+   participants until the session is revealed, so scoring stays independent. */
+async function persistCalibration(c){
+ const others=S.calibrations.filter(x=>x.id!==c.id);S.calibrations=[c,...others].sort((a,b)=>a.createdAt<b.createdAt?1:-1);
+ await store.set("qa:calib:"+c.id,JSON.stringify(c),true);
+}
+async function deleteCalibration(id){S.calibrations=S.calibrations.filter(c=>c.id!==id);await store.del("qa:calib:"+id,true);}
+
+
 /* =============================== RENDER =================================== */
 const app=()=>document.getElementById("app");
 function render(){
  if(!S.session){app().innerHTML=viewLogin();wireLogin();return;}
  if(S._timer){clearInterval(S._timer);S._timer=null;}
- const nav=[["evaluate","Evaluate","clipboard"],["agents","Agents","users"],["analytics","Analytics","bar"],["settings","Configuration","settings"]];
+ const activeFollowups=S.followups.filter(f=>f.status!=="Completed").length;
+ const nav=[["evaluate","Evaluate","clipboard"],["agents","Agents","users"],["coaching","Coaching","checks"],["calibration","Calibration","award"],["analytics","Analytics","bar"],["settings","Configuration","settings"]];
  let side='<aside class="side"><div class="brand"><div class="logo"><img src="'+LOGO_DATA_URI+'" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:9px"/></div><div><div class="brand-name">BA Customer Service</div><div class="brand-sub">QA & Training · CS</div></div></div>'+
   '<button class="newbtn" onclick="act.newEval()">'+ic("plus",15)+'<span>New evaluation</span></button>'+
   '<button class="newbtn" style="background:transparent;border:1px solid var(--side-hover);color:var(--side-txt)" onclick="document.getElementById(\'excelFileInput\').click()">'+ic("save",15)+'<span>Import Excel</span></button>'+
   '<input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden onchange="act.handleImportFile(this)"/>'+
   '<nav class="nav">'+
-  nav.map(([id,l,i])=>'<button class="navitem '+(S.view===id?"on":"")+'" onclick="act.go(\''+id+'\')">'+ic(i,16)+'<span class="lbl">'+l+'</span>'+(id==="agents"&&S.evals.length?'<span class="badge">'+S.evals.length+'</span>':'')+'</button>').join("")+
-  '</nav><div class="side-foot"><div class="session-pill">'+ic("users",13)+'<span class="lbl">Sesión: <b>'+esc(S.session.evaluator)+'</b></span><button class="logoutbtn" onclick="act.logout()">Salir</button></div>'+
+  nav.map(([id,l,i])=>'<button class="navitem '+(S.view===id?"on":"")+'" onclick="act.go(\''+id+'\')">'+ic(i,16)+'<span class="lbl">'+l+'</span>'+
+   (id==="agents"&&S.evals.length?'<span class="badge">'+S.evals.length+'</span>':'')+
+   (id==="coaching"&&activeFollowups?'<span class="badge" style="background:var(--part)">'+activeFollowups+'</span>':'')+
+   '</button>').join("")+
+  '</nav><div class="side-foot"><div class="session-pill">'+ic("users",13)+'<span class="lbl">Signed in as <b>'+esc(S.session.evaluator)+'</b></span><button class="logoutbtn" onclick="act.logout()">Sign out</button></div>'+
   '<button class="themebtn" id="themebtn" onclick="act.theme()">'+ic(S.theme==="light"?"moon":"sun",15)+'<span>'+(S.theme==="light"?"Dark mode":"Light mode")+'</span></button>'+
   '<div class="foot-note">Replaces <b>QA_Form.xlsx</b> — same rules, live scoring. Finalized evaluations & rubric are shared with your team.</div></div></aside>';
  let main="";
  if(S.importPreview){main=viewImportPreview();}
  else if(S.view==="evaluate")main=S.draft?viewEval():viewSetup();
  else if(S.view==="agents")main=S.profileAgent?viewProfile():viewAgents();
+ else if(S.view==="coaching")main=viewCoaching();
+ else if(S.view==="calibration")main=S.calibOpenId?viewCalibrationDetail():viewCalibrationList();
  else if(S.view==="analytics")main=viewAnalytics();
  else if(S.view==="settings")main=viewSettings();
  app().innerHTML='<div class="shell">'+side+'<main class="main">'+main+'</main></div>';
  if(S.importPreview){/* no extra wiring needed — plain checkboxes/buttons */}
  else if(S.view==="evaluate"&&S.draft)wireEval();
  if(!S.importPreview&&S.view==="agents"&&!S.profileAgent)wireAgents();
+ if(!S.importPreview&&S.view==="coaching")wireCoaching();
+ if(!S.importPreview&&S.view==="calibration"&&!S.calibOpenId)wireCalibrationList();
+ if(!S.importPreview&&S.view==="calibration"&&S.calibOpenId)wireCalibrationDetail();
  if(!S.importPreview&&S.view==="analytics")wireAnalytics();
  if(!S.importPreview&&S.view==="settings")wireSettings();
 }
@@ -525,34 +614,34 @@ function viewLogin(){
  const step=S.loginStep;
  let body="";
  if(step==="name"){
-  body='<div class="login-step-lbl">Selecciona tu nombre</div>'+
-   comboHTML("loginname",S.loginName,"Buscar tu nombre…")+
-   '<div class="login-hint">Tu nombre debe estar en la lista de evaluadores. Si no aparece, pide a un administrador que lo agregue.</div>';
+  body='<div class="login-step-lbl">Select your name</div>'+
+   comboHTML("loginname",S.loginName,"Search your name…")+
+   '<div class="login-hint">Your name must be on the evaluator list. If it doesn\'t show up, ask an administrator to add it.</div>';
  } else if(step==="pin-create"){
-  body='<div class="login-name-pill"><span>'+esc(S.loginName)+'</span><button onclick="act.loginBack()">Cambiar</button></div>'+
-   '<div class="login-step-lbl">Crea un PIN de acceso (4-6 dígitos)</div>'+
+  body='<div class="login-name-pill"><span>'+esc(S.loginName)+'</span><button onclick="act.loginBack()">Change</button></div>'+
+   '<div class="login-step-lbl">Create an access PIN (4-6 digits)</div>'+
    '<input id="pin1" class="login-pin" inputmode="numeric" maxlength="6" placeholder="••••"/>'+
-   '<input id="pin2" class="login-pin" inputmode="numeric" maxlength="6" placeholder="Confirma tu PIN"/>'+
+   '<input id="pin2" class="login-pin" inputmode="numeric" maxlength="6" placeholder="Confirm your PIN"/>'+
    (S.loginErr?'<div class="login-err">'+esc(S.loginErr)+'</div>':'')+
    loginRememberRow()+
-   '<button class="login-btn" onclick="act.loginCreatePin()" '+(S.loginBusy?"disabled":"")+'>Crear PIN y continuar</button>'+
-   '<div class="login-hint">Este PIN es solo un candado ligero para tu equipo — no es un inicio de sesión corporativo, así que no reutilices contraseñas importantes.</div>';
+   '<button class="login-btn" onclick="act.loginCreatePin()" '+(S.loginBusy?"disabled":"")+'>Create PIN and continue</button>'+
+   '<div class="login-hint">This PIN is just a light lock for your team — it is not a corporate login, so don\'t reuse important passwords.</div>';
  } else if(step==="pin-enter"){
-  body='<div class="login-name-pill"><span>'+esc(S.loginName)+'</span><button onclick="act.loginBack()">Cambiar</button></div>'+
-   '<div class="login-step-lbl">Ingresa tu PIN</div>'+
+  body='<div class="login-name-pill"><span>'+esc(S.loginName)+'</span><button onclick="act.loginBack()">Change</button></div>'+
+   '<div class="login-step-lbl">Enter your PIN</div>'+
    '<input id="pin1" class="login-pin" inputmode="numeric" maxlength="6" placeholder="••••"/>'+
    (S.loginErr?'<div class="login-err">'+esc(S.loginErr)+'</div>':'')+
    loginRememberRow()+
-   '<button class="login-btn" onclick="act.loginEnterPin()" '+(S.loginBusy?"disabled":"")+'>Ingresar</button>'+
-   '<div class="login-forgot">¿Olvidaste tu PIN? <button onclick="act.loginForgotPin()">Reiniciarlo</button></div>';
+   '<button class="login-btn" onclick="act.loginEnterPin()" '+(S.loginBusy?"disabled":"")+'>Sign in</button>'+
+   '<div class="login-forgot">Forgot your PIN? <button onclick="act.loginForgotPin()">Reset it</button></div>';
  }
  return '<div class="login-shell"><div class="login-card">'+
-  '<div class="login-top"><div class="login-logo"><img src="'+LOGO_DATA_URI+'" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:14px"/></div><h1>BA Customer Service</h1><p>QA & Training · Portal de evaluadores</p></div>'+
+  '<div class="login-top"><div class="login-logo"><img src="'+LOGO_DATA_URI+'" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:14px"/></div><h1>BA Customer Service</h1><p>QA & Training · Evaluator Portal</p></div>'+
   '<div class="login-body">'+body+'</div>'+
-  '<div class="login-foot">Acceso identificado por nombre de equipo — no sustituye un inicio de sesión corporativo ni protege datos sensibles.</div>'+
+  '<div class="login-foot">Identified by team member name — not a substitute for a corporate login and does not protect sensitive data.</div>'+
   '</div></div>';
 }
-function loginRememberRow(){return '<label class="login-remember"><input type="checkbox" id="loginRemember" '+(S.loginRemember?"checked":"")+'/> Recordarme en este dispositivo</label>';}
+function loginRememberRow(){return '<label class="login-remember"><input type="checkbox" id="loginRemember" '+(S.loginRemember?"checked":"")+'/> Remember me on this device</label>';}
 function wireLogin(){
  if(S.loginStep==="name"){
   wireCombo("loginname",EVALUATORS,S.loginName,v=>{act.loginPickName(v);});
@@ -579,7 +668,7 @@ function viewEval(){
  const fin=identityLocked&&!ev.editUnlocked;
  const opt=(arr,val)=>'<option value="">Select…</option>'+arr.map(a=>'<option '+(a===val?"selected":"")+'>'+esc(a)+'</option>').join("");
  let tabs=Object.entries(S.schema.channels).map(([k,c])=>'<button class="chtab '+(ev.channel===k?"on":"")+'" '+(identityLocked?"disabled":"")+' onclick="act.setChannel(\''+k+'\')">'+ic(c.icon,15)+' '+c.label+'</button>').join("");
- let editBanner=ev.editUnlocked?'<div class="critbanner" style="background:var(--part-bg);color:var(--part-fg);border-color:var(--part-ring)">'+ic("alert",14)+' Editando una evaluación ya finalizada — los cambios quedarán registrados en el historial.</div>':'';
+ let editBanner=ev.editUnlocked?'<div class="critbanner" style="background:var(--part-bg);color:var(--part-fg);border-color:var(--part-ring)">'+ic("alert",14)+' Editing an already-finalized evaluation — changes will be recorded in the change log.</div>':'';
  let meta='<div class="meta">'+
   fld("Agent",identityLocked?'<input class="combo-input" disabled value="'+esc(ev.agent)+'"/>':comboHTML("agent",ev.agent,"Type to search agent…"))+
   fld("Evaluator",identityLocked?'<input class="combo-input" disabled value="'+esc(ev.evaluator)+'"/>':comboHTML("evaluator",ev.evaluator,"Type to search evaluator…"))+
@@ -701,10 +790,10 @@ function renderRail(){
  if(!identityLocked){
   action='<button class="finalize" '+(ready?"":"disabled")+' onclick="act.finalize()">'+ic("check2",15)+' '+(ready?"Finalize evaluation":"Answer all criteria ("+sc.answered+"/"+sc.total+")")+'</button>';
  } else if(ev.editUnlocked){
-  action='<button class="finalize" onclick="act.saveEdit()">'+ic("check2",15)+' Guardar cambios</button>'+
-   '<button class="tool wide" onclick="act.cancelEdit()">'+ic("x",12)+' Cancelar edición</button>';
+  action='<button class="finalize" onclick="act.saveEdit()">'+ic("check2",15)+' Save changes</button>'+
+   '<button class="tool wide" onclick="act.cancelEdit()">'+ic("x",12)+' Cancel edit</button>';
  } else {
-  action=fbHTML()+'<button class="tool wide" style="margin-top:10px" onclick="act.startEdit()">'+ic("clip",12)+' Editar evaluación</button>';
+  action=fbHTML()+'<button class="tool wide" style="margin-top:10px" onclick="act.startEdit()">'+ic("clip",12)+' Edit evaluation</button>';
  }
  const pdfBtn='<button id="pdfbtn" onclick="act.exportPDF()" style="width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px;font-weight:700;font-size:13px;cursor:pointer">'+ic("save",15)+' Export PDF report</button>';
  document.getElementById("rail").innerHTML=gauge+banner+stats+recBox+pend+pill+action+pdfBtn+changeLogHTML(ev);
@@ -742,10 +831,10 @@ function fbHTML(){const ev=S.draft;
 
 /* =============================== ACTIONS ================================== */
 const act={
- go(v){S.view=v;S.profileAgent=null;render();},
+ go(v){S.view=v;S.profileAgent=null;if(v!=="calibration")S.calibOpenId=null;render();},
  theme(){toggleTheme();},
  newEval(){S.view="evaluate";S.draft=makeDraft();if(S.session&&S.session.evaluator)S.draft.evaluator=S.session.evaluator;render();},
- resetEval(){if(!S.draft)return;if(!confirm("¿Limpiar la evaluación actual? Se borrarán respuestas, comentarios y datos capturados."))return;const ch=S.draft.channel;S.draft=makeDraft();S.draft.channel=ch;render();},
+ resetEval(){if(!S.draft)return;if(!confirm("Clear the current evaluation? Responses, comments, and captured data will be deleted."))return;const ch=S.draft.channel;S.draft=makeDraft();S.draft.channel=ch;render();},
  setChannel(ch){
   if(S.draft.channel===ch)return;
   /* Keep any answered criterion whose id also exists in the new channel's
@@ -757,7 +846,7 @@ const act={
   Object.entries(S.draft.responses).forEach(([id,r])=>{
    if(newCritIds.has(id))kept[id]=r;else dropped.push(id);
   });
-  if(dropped.length&&!confirm(dropped.length+" respuesta(s) no existen en el nuevo canal y se perderán. El resto de tus respuestas se mantiene. ¿Continuar?"))return;
+  if(dropped.length&&!confirm(dropped.length+" response(s) don't exist in the new channel and will be lost. The rest of your responses are kept. Continue?"))return;
   S.draft.channel=ch;S.draft.responses=kept;S.draft.openSecs={};render();scheduleSave();
  },
  toggleSec(id){const cur=S.draft.openSecs[id]!==false;S.draft.openSecs[id]=!cur;render();},
@@ -810,7 +899,7 @@ const act={
  },
  cancelEdit(){
   const ev=S.draft;if(!ev||!ev._editSnapshot)return;
-  if(!confirm("¿Descartar los cambios de esta edición?"))return;
+  if(!confirm("Discard the changes made in this edit?"))return;
   clearTimeout(S._saveT);
   const snap=ev._editSnapshot;
   ev.responses=snap.responses;ev.account=snap.account;ev.interactionId=snap.interactionId;ev.interactionDate=snap.interactionDate;ev.evalDate=snap.evalDate;
@@ -843,14 +932,14 @@ const act={
   persistEval(ev);render();
  },
  downloadQuarterlyPDF(){
-  const sel=currentAnalyticsAgent();if(!sel){alert("No hay agentes con evaluaciones.");return;}
-  if(!(window.jspdf&&window.jspdf.jsPDF)){alert("La librería PDF no cargó. Reintenta en un momento.");return;}
+  const sel=currentAnalyticsAgent();if(!sel){alert("No agents with evaluations.");return;}
+  if(!(window.jspdf&&window.jspdf.jsPDF)){alert("The PDF library did not load. Try again in a moment.");return;}
   const n=S.analyticsMonths||3,doc=buildQuarterlyReportDoc(sel,n);
   if(!doc){alert("No se pudo generar el PDF.");return;}
   doc.save(quarterlyReportFilename(sel,n));
  },
  downloadQuarterlyImage(){
-  const sel=currentAnalyticsAgent();if(!sel){alert("No hay agentes con evaluaciones.");return;}
+  const sel=currentAnalyticsAgent();if(!sel){alert("No agents with evaluations.");return;}
   const n=S.analyticsMonths||3,canvas=buildQuarterlyReportCanvas(sel,n);
   canvas.toBlob(blob=>{
    const url=URL.createObjectURL(blob),link=document.createElement("a");
@@ -870,8 +959,8 @@ Object.assign(act,{
  async loginCreatePin(){
   const p1=document.getElementById("pin1"),p2=document.getElementById("pin2");
   const v1=(p1&&p1.value||"").trim(),v2=(p2&&p2.value||"").trim();
-  if(!/^\d{4,6}$/.test(v1)){S.loginErr="El PIN debe tener entre 4 y 6 dígitos.";render();return;}
-  if(v1!==v2){S.loginErr="Los PIN no coinciden.";render();return;}
+  if(!/^\d{4,6}$/.test(v1)){S.loginErr="PIN must be between 4 and 6 digits.";render();return;}
+  if(v1!==v2){S.loginErr="The PINs don't match.";render();return;}
   S.loginBusy=true;render();
   await setAuth(S.loginName,v1);
   S.session={evaluator:S.loginName};
@@ -884,13 +973,13 @@ Object.assign(act,{
   S.loginBusy=true;render();
   const ok=await checkAuth(S.loginName,v1);
   S.loginBusy=false;
-  if(!ok){S.loginErr="PIN incorrecto.";render();return;}
+  if(!ok){S.loginErr="Incorrect PIN.";render();return;}
   S.session={evaluator:S.loginName};
   if(S.loginRemember)await persistSession(S.loginName);
   S.view="evaluate";S.draft=null;render();
  },
  loginForgotPin(){
-  if(!confirm("Esto reiniciará tu PIN de acceso. La próxima vez podrás crear uno nuevo. ¿Continuar?"))return;
+  if(!confirm("This will reset your access PIN. Next time you'll be able to create a new one. Continue?"))return;
   S.loginStep="pin-create";S.loginErr="";render();
  },
  async logout(){
@@ -986,13 +1075,13 @@ function bulkExportHTML(){
  return '<div class="card" style="margin-bottom:16px">'+
   '<div class="card-h">Bulk export by date range</div>'+
   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">'+
-   '<label class="field" style="min-width:230px"><span>Add agent(s)</span>'+comboHTML("bulkagentpicker","","Buscar agente…")+'</label>'+
+   '<label class="field" style="min-width:230px"><span>Add agent(s)</span>'+comboHTML("bulkagentpicker","","Search agent…")+'</label>'+
    '<label class="field sm"><span>From</span><input type="month" id="bulk-from" value="'+esc(B.from)+'"/></label>'+
    '<label class="field sm"><span>To</span><input type="month" id="bulk-to" value="'+esc(B.to)+'"/></label>'+
    '<button class="dlbtn" id="bulkzipbtn" onclick="act.downloadBulkZip()">'+ic("save",14)+' Download ZIP</button>'+
   '</div>'+
-  (chips?'<div class="evlist" style="margin-top:0">'+chips+'</div>':'<div class="emptynote sm">Selecciona uno o más agentes arriba (ej. Isabelle Morales & Natalia Sibaja) y un rango de meses.</div>')+
-  '<div class="foot-note" style="margin-top:10px">El ZIP incluye una carpeta por agente, con subcarpetas por mes (evaluaciones en PDF) y una subcarpeta <b>"Overall Feedback"</b> con el resumen consolidado de todo el periodo.</div>'+
+  (chips?'<div class="evlist" style="margin-top:0">'+chips+'</div>':'<div class="emptynote sm">Select one or more agents above (e.g. Isabelle Morales & Natalia Sibaja) and a month range.</div>')+
+  '<div class="foot-note" style="margin-top:10px">The ZIP includes one folder per agent, with subfolders per month (evaluations in PDF) and an <b>"Overall Feedback"</b> subfolder with the consolidated summary for the whole period.</div>'+
  '</div>';
 }
 function viewAgents(){
@@ -1016,19 +1105,19 @@ function viewAgents(){
  return '<div class="page"><div class="pagehead"><h1>Agents</h1><p>Filter by agent, period (month · year), and evaluation volume. Finalized evaluations are shared with your whole QA team.</p></div>'+bulkExportHTML()+filters+summary+body+'</div>';
 }
 act.clearAgentFilters=function(){S.agentFilters={agent:"",month:"",minEvals:0};render();};
-act.downloadAgentReport=function(){const name=S.profileAgent;if(!name)return;const ym=S.agentFilters?S.agentFilters.month:"";const doc=buildAgentScorecardDoc(name,ym||null,ym||null);if(!doc){alert("No hay evaluaciones para este agente en el periodo seleccionado.");return;}doc.save(scorecardFilename(name,ym||null,ym||null));};
-act.downloadInteraction=function(id){const e=S.evals.find(x=>x.id===id);if(!e)return;const doc=buildInteractionDoc(e);if(!doc){alert("La librería PDF no cargó. Reintenta en un momento.");return;}doc.save(interactionFilename(e));};
+act.downloadAgentReport=function(){const name=S.profileAgent;if(!name)return;const ym=S.agentFilters?S.agentFilters.month:"";const doc=buildAgentScorecardDoc(name,ym||null,ym||null);if(!doc){alert("No evaluations for this agent in the selected period.");return;}doc.save(scorecardFilename(name,ym||null,ym||null));};
+act.downloadInteraction=function(id){const e=S.evals.find(x=>x.id===id);if(!e)return;const doc=buildInteractionDoc(e);if(!doc){alert("The PDF library did not load. Try again in a moment.");return;}doc.save(interactionFilename(e));};
 act.downloadReportsZip=async function(){
- const list=filteredAgents();if(!list.length){alert("No hay agentes en el filtro actual.");return;}
- if(!(window.jspdf&&window.jspdf.jsPDF)){alert("La librería PDF no cargó. Reintenta en un momento.");return;}
- if(!window.JSZip){alert("La librería ZIP no cargó. Reintenta en un momento.");return;}
+ const list=filteredAgents();if(!list.length){alert("No agents match the current filter.");return;}
+ if(!(window.jspdf&&window.jspdf.jsPDF)){alert("The PDF library did not load. Try again in a moment.");return;}
+ if(!window.JSZip){alert("The ZIP library did not load. Try again in a moment.");return;}
  const btn=document.getElementById("dlzip"),label=btn?btn.innerHTML:"";if(btn){btn.disabled=true;btn.innerHTML="Generating… ("+list.length+")";}
  try{const ym=S.agentFilters.month,zip=new JSZip();
   for(const a of list){const doc=buildAgentScorecardDoc(a.name,ym||null,ym||null);if(doc)zip.file(scorecardFilename(a.name,ym||null,ym||null),doc.output("arraybuffer"));}
   const content=await zip.generateAsync({type:"blob"});
   const url=URL.createObjectURL(content),link=document.createElement("a");link.href=url;link.download="BACS_QA_Reports_"+(ym||"all_time")+".zip";
   document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
- }catch(e){alert("Error generando el ZIP: "+e.message);}
+ }catch(e){alert("Error generating the ZIP: "+e.message);}
  finally{if(btn){btn.disabled=false;btn.innerHTML=label;}}
 };
 function monthFolderName(mk){const m=parseInt(mk.split("-")[1],10);return mk+" - "+MESES_EN[(m-1+12)%12];}
@@ -1037,14 +1126,14 @@ act.removeBulkAgent=function(name){const B=S.bulk;if(!B)return;B.agents=B.agents
 act.handleImportFile=async function(input){
  const file=input.files[0];input.value="";
  if(!file)return;
- if(!window.XLSX){alert("La librería de Excel no cargó. Reintenta en un momento.");return;}
+ if(!window.XLSX){alert("The Excel library did not load. Try again in a moment.");return;}
  try{
   const buf=await file.arrayBuffer();
   const wb=XLSX.read(buf,{type:"array",cellDates:true});
   const rows=parseWorkbookToEvaluations(wb);
-  if(!rows.length){alert("No se encontraron evaluaciones completas en este archivo (hojas Phone/Chat/Email vacías o con un formato distinto al esperado).");return;}
+  if(!rows.length){alert("No completed evaluations were found in this file (Phone/Chat/Email sheets are blank or use a different format than expected).");return;}
   S.importPreview=rows;S.importFileName=file.name;render();
- }catch(e){alert("No se pudo leer el archivo: "+e.message);}
+ }catch(e){alert("Could not read the file: "+e.message);}
 };
 act.toggleImportRow=function(i){const r=(S.importPreview||[])[i];if(!r||r.duplicate)return;r.include=!r.include;render();};
 act.cancelImport=function(){S.importPreview=null;S.importFileName="";render();};
@@ -1065,19 +1154,73 @@ act.confirmImport=async function(){
  }
  const n=rows.length;S.importPreview=null;S.importFileName="";
  S.view="agents";S.profileAgent=null;render();
- alert(n+" evaluación(es) importada(s) correctamente.");
+ alert(n+" evaluation(s) imported successfully.");
+};
+/* ---- coaching follow-ups ---- */
+act.setFollowupFilter=function(f){S.followupFilter=f;render();};
+act.setFollowupStatus=async function(id,status){
+ const f=S.followups.find(x=>x.id===id);if(!f)return;
+ f.status=status;
+ if(status==="Completed"){f.completedAt=new Date().toISOString();f.completedBy=(S.session&&S.session.evaluator)||"—";}
+ else{f.completedAt=null;f.completedBy=null;}
+ await persistFollowup(f);render();
+};
+act.setFollowupScheduledDate=async function(id,date){
+ const f=S.followups.find(x=>x.id===id);if(!f)return;
+ f.scheduledDate=date;await persistFollowup(f);
+};
+act._fuNoteTimers={};
+act.scheduleFollowupNote=function(id,text){
+ clearTimeout(act._fuNoteTimers[id]);
+ act._fuNoteTimers[id]=setTimeout(async()=>{
+  const f=S.followups.find(x=>x.id===id);if(!f)return;
+  f.note=text;await persistFollowup(f);
+ },700);
+};
+/* ---- calibration sessions ---- */
+act.setCalibChannel=function(ch){S.calibDraft.channel=ch;S.calibDraft.participants=[];render();};
+act.removeCalibParticipant=function(name){S.calibDraft.participants=S.calibDraft.participants.filter(n=>n!==name);render();};
+act.createCalibration=async function(){
+ const D=S.calibDraft;
+ const title=(document.getElementById("calib-title")||{}).value||D.title||"";
+ if(D.participants.length<2){alert("Add at least 2 participants to create a calibration session.");return;}
+ const c={id:"calib-"+Date.now()+"-"+Math.random().toString(36).slice(2,6),
+  createdAt:new Date().toISOString(),createdBy:(S.session&&S.session.evaluator)||"—",
+  title,channel:D.channel,participants:D.participants.slice(),responses:{},status:"Open"};
+ await persistCalibration(c);
+ S.calibDraft={title:"",channel:"phone",participants:[]};
+ S.calibOpenId=c.id;render();
+};
+act.openCalibration=function(id){S.calibOpenId=id;render();};
+act.closeCalibration=function(){S.calibOpenId=null;render();};
+act.submitCalibScore=async function(){
+ const c=S.calibrations.find(x=>x.id===S.calibOpenId);if(!c)return;
+ const me=S.session.evaluator;
+ const draft=c._draft||{};
+ const schema=S.schema.channels[c.channel];
+ const criteria=schema.sections.flatMap(s=>s.criteria);
+ const missing=criteria.filter(cr=>!(draft[cr.id]&&draft[cr.id].value));
+ if(missing.length){alert("Please score every criterion before submitting ("+missing.length+" left).");return;}
+ c.responses[me]=JSON.parse(JSON.stringify(draft));
+ delete c._draft;
+ await persistCalibration(c);render();
+};
+act.revealCalibration=async function(){
+ const c=S.calibrations.find(x=>x.id===S.calibOpenId);if(!c)return;
+ c.status="Revealed";c.revealedAt=new Date().toISOString();
+ await persistCalibration(c);render();
 };
 /* Bulk export: several agents × a free date range -> ZIP with
    Agent/Month/*.pdf plus an Agent/"Overall Feedback"/*.pdf per agent. */
 act.downloadBulkZip=async function(){
  const B=S.bulk||{agents:[]};
- if(!B.agents.length){alert("Selecciona al menos un agente.");return;}
+ if(!B.agents.length){alert("Select at least one agent.");return;}
  const fromEl=document.getElementById("bulk-from"),toEl=document.getElementById("bulk-to");
  const from=(fromEl&&fromEl.value)||B.from||"",to=(toEl&&toEl.value)||B.to||"";
- if(!from||!to){alert("Selecciona un rango de meses (From/To).");return;}
- if(from>to){alert("El mes 'From' debe ser anterior o igual al mes 'To'.");return;}
- if(!(window.jspdf&&window.jspdf.jsPDF)){alert("La librería PDF no cargó. Reintenta en un momento.");return;}
- if(!window.JSZip){alert("La librería ZIP no cargó. Reintenta en un momento.");return;}
+ if(!from||!to){alert("Select a month range (From/To).");return;}
+ if(from>to){alert("The 'From' month must be on or before the 'To' month.");return;}
+ if(!(window.jspdf&&window.jspdf.jsPDF)){alert("The PDF library did not load. Try again in a moment.");return;}
+ if(!window.JSZip){alert("The ZIP library did not load. Try again in a moment.");return;}
  const btn=document.getElementById("bulkzipbtn"),label=btn?btn.innerHTML:"";if(btn){btn.disabled=true;btn.innerHTML="Generating… (0/"+B.agents.length+")";}
  try{
   const zip=new JSZip();let done=0,anyFile=false;
@@ -1096,12 +1239,12 @@ act.downloadBulkZip=async function(){
    }
    done++;if(btn)btn.innerHTML="Generating… ("+done+"/"+B.agents.length+")";
   }
-  if(!anyFile){alert("Ningún agente seleccionado tiene evaluaciones finalizadas en ese rango de meses.");return;}
+  if(!anyFile){alert("None of the selected agents have finalized evaluations in that month range.");return;}
   const content=await zip.generateAsync({type:"blob"});
   const url=URL.createObjectURL(content),link=document.createElement("a");
   link.href=url;link.download="BACS_Bulk_"+from+"_to_"+to+".zip";
   document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
- }catch(e){alert("Error generando el ZIP: "+e.message);}
+ }catch(e){alert("Error generating the ZIP: "+e.message);}
  finally{if(btn){btn.disabled=false;btn.innerHTML=label;}}
 };
 function wireAgents(){
@@ -1130,6 +1273,10 @@ function viewProfile(){
   return '<tr><td>'+fmtDateUS(r.evalDate?r.evalDate+"T00:00:00":r.createdAt)+'</td><td class="cap">'+r.channel+'</td><td>'+esc(r.role)+'</td><td>'+esc(r.evaluator||"—")+'</td>'+
    '<td><b>'+r.pct+'%</b></td><td><span class="tag" style="color:'+t.fg+';background:'+t.bg+';border-color:'+t.ring+'">'+esc(r.rating||"")+'</span></td>'+
    '<td><span class="status-mini" data-s="'+r.status+'">'+r.status+'</span></td><td style="white-space:nowrap"><button class="del" title="View / edit" onclick="act.openEval(\''+r.id+'\')">'+ic("clip",13)+'</button> <button class="del" title="Download PDF" onclick="act.downloadInteraction(\''+r.id+'\')">'+ic("save",13)+'</button> <button class="del" title="Delete" onclick="act.delEval(\''+r.id+'\')">'+ic("trash",13)+'</button></td></tr>';}).join("");
+ const agentFollowups=S.followups.filter(f=>f.agent===name);
+ const fuHTML=agentFollowups.length?agentFollowups.map(f=>
+  '<div class="patrow"><span>'+fmtDateUS(f.evalDate)+' · '+f.channel+' · '+f.finalPct+'%'+(f.note?' — '+esc(f.note.slice(0,60))+(f.note.length>60?"…":""):"")+'</span><span class="fu-status" data-s="'+f.status+'">'+f.status+'</span></div>'
+ ).join(""):'<div class="emptynote sm">No coaching follow-ups for this agent.</div>';
  return '<div class="page"><button class="back" onclick="act.back()">'+ic("arrowl",14)+' Agents</button>'+
   '<div class="prof-head"><div class="prof-av">'+esc(initials(name))+'</div><div><h1>'+esc(name)+'</h1><div class="prof-sub">'+count+' evaluations · avg '+avg+'%</div></div>'+
   '<div style="margin-left:auto;display:flex;align-items:center;gap:10px">'+
@@ -1140,10 +1287,160 @@ function viewProfile(){
   '<div class="grid2"><div class="card span2"><div class="card-h">Score evolution</div>'+(trend.length>1?lineChart(trend.map(r=>r.pct)):'<div class="emptynote sm">Need at least two evaluations to plot a trend.</div>')+'</div>'+
   '<div class="card"><div class="card-h">Recurring gaps</div>'+pat(topF,"fail")+'</div>'+
   '<div class="card"><div class="card-h">Recurring strengths</div>'+pat(topS,"meet")+'</div></div>'+
+  '<div class="card" style="margin-bottom:14px"><div class="card-h">Coaching history</div>'+fuHTML+'</div>'+
   '<div class="card"><div class="card-h">Evaluation history</div><table class="table"><thead><tr><th>Date</th><th>Channel</th><th>Role</th><th>Evaluator</th><th>Score</th><th>Rating</th><th>Status</th><th></th></tr></thead><tbody>'+rowsHTML+'</tbody></table></div></div>';
 }
 
 /* ------------------------------ analytics -------------------------------- */
+function followupAge(f){return Math.floor((Date.now()-new Date(f.createdAt).getTime())/86400000);}
+function followupAgeTone(days){return days>=7?"old":days>=3?"warn":"new";}
+function followupCard(f){
+ const ev=S.evals.find(e=>e.id===f.evalId);
+ const days=followupAge(f),tone=followupAgeTone(days);
+ return '<div class="fu-card">'+
+  '<div class="fu-top"><span class="fu-agent">'+esc(f.agent)+'</span>'+
+  '<span class="fu-meta">'+f.channel+' · '+fmtDateUS(f.evalDate)+' · '+f.finalPct+'%</span>'+
+  '<span class="fu-status" data-s="'+f.status+'">'+f.status+'</span>'+
+  (f.status!=="Completed"?'<span class="fu-age '+tone+'">'+days+' day'+(days!==1?"s":"")+' open</span>':'')+
+  '</div>'+
+  '<div class="fu-actions">'+
+   (ev?'<button class="tool" onclick="act.openEval(\''+ev.id+'\')">'+ic("clip",12)+' View evaluation</button>':'')+
+   '<select class="fu-select" onchange="act.setFollowupStatus(\''+f.id+'\',this.value)">'+
+    ["Pending","Scheduled","Completed"].map(s=>'<option '+(f.status===s?"selected":"")+'>'+s+'</option>').join("")+
+   '</select>'+
+   (f.status==="Scheduled"?'<input type="date" class="fu-select" value="'+esc(f.scheduledDate||"")+'" onchange="act.setFollowupScheduledDate(\''+f.id+'\',this.value)"/>':'')+
+   (f.status==="Completed"&&f.completedBy?'<span class="fu-meta">Completed by '+esc(f.completedBy)+' on '+fmtDateUS(f.completedAt)+'</span>':'')+
+  '</div>'+
+  '<textarea class="fu-note" id="funote-'+f.id+'" placeholder="Coaching notes — what was discussed, what to check next time…">'+esc(f.note||"")+'</textarea>'+
+ '</div>';
+}
+function viewCoaching(){
+ const filter=S.followupFilter||"active";
+ const list=S.followups.filter(f=>filter==="all"?true:filter==="completed"?f.status==="Completed":f.status!=="Completed");
+ const byAgent={};list.forEach(f=>{(byAgent[f.agent]=byAgent[f.agent]||[]).push(f);});
+ Object.values(byAgent).forEach(arr=>arr.sort((a,b)=>a.createdAt<b.createdAt?-1:1));
+ const agentNames=Object.keys(byAgent).sort((a,b)=>{
+  const oldestA=byAgent[a][0].createdAt,oldestB=byAgent[b][0].createdAt;return oldestA<oldestB?-1:1;
+ });
+ const tabs=[["active","Active"],["completed","Completed"],["all","All"]].map(([k,l])=>
+  '<button class="fu-tab '+(filter===k?"on":"")+'" onclick="act.setFollowupFilter(\''+k+'\')">'+l+'</button>').join("");
+ const activeCount=S.followups.filter(f=>f.status!=="Completed").length;
+ const body=agentNames.length?agentNames.map(name=>
+  '<div class="fu-group-h">'+esc(name)+' ('+byAgent[name].length+')</div>'+byAgent[name].map(followupCard).join("")
+ ).join(""):'<div class="emptynote">No coaching follow-ups '+(filter==="completed"?"completed":filter==="all"?"recorded":"pending")+' yet.</div>';
+ return '<div class="page"><div class="pagehead"><h1>Coaching Queue</h1><p>Every evaluation that lands in "Coaching" status automatically shows up here, so a Follow-up recommendation never quietly gets lost. Currently <b>'+activeCount+'</b> active.</p></div>'+
+  '<div class="fu-tabs">'+tabs+'</div>'+body+'</div>';
+}
+function wireCoaching(){
+ S.followups.forEach(f=>{const n=document.getElementById("funote-"+f.id);if(n)n.addEventListener("input",()=>act.scheduleFollowupNote(f.id,n.value));});
+}
+
+/* ------------------------------- calibration ------------------------------- */
+function calibAgreement(c){
+ const submitted=c.participants.filter(p=>c.responses[p]);
+ if(submitted.length<2)return null;
+ const schema=S.schema.channels[c.channel];if(!schema)return null;
+ const criteria=schema.sections.flatMap(s=>s.criteria);
+ let agree=0;
+ criteria.forEach(cr=>{
+  const vals=submitted.map(p=>(c.responses[p][cr.id]||{}).value||"—");
+  if(new Set(vals).size===1)agree++;
+ });
+ return{pct:Math.round((agree/criteria.length)*100),total:criteria.length,agree};
+}
+function viewCalibrationList(){
+ const D=S.calibDraft;
+ const chips=D.participants.map(name=>'<span class="ev"><span class="ev-name">'+esc(name)+'</span><button onclick="act.removeCalibParticipant(\''+esc(name).replace(/'/g,"\\'")+'\')">'+ic("x",11)+'</button></span>').join("");
+ const tabs=Object.entries(S.schema.channels).map(([k,c])=>'<button class="chtab '+(D.channel===k?"on":"")+'" onclick="act.setCalibChannel(\''+k+'\')">'+ic(c.icon,15)+' '+c.label+'</button>').join("");
+ const createCard='<div class="card" style="margin-bottom:18px">'+
+  '<div class="card-h">New calibration session</div>'+
+  '<div class="chtabs" style="margin-bottom:12px">'+tabs+'</div>'+
+  '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">'+
+   '<label class="field" style="min-width:260px;flex:1"><span>Title / interaction reference</span><input id="calib-title" value="'+esc(D.title)+'" placeholder="e.g. Account B62614 — Aug 5 call"/></label>'+
+   '<label class="field" style="min-width:220px"><span>Add participants</span>'+comboHTML("calibparticipant","","Search evaluator…")+'</label>'+
+   '<button class="primary" onclick="act.createCalibration()">'+ic("plus",15)+' Create session</button>'+
+  '</div>'+
+  (chips?'<div class="evlist" style="margin-top:0">'+chips+'</div>':'<div class="emptynote sm">Add at least 2 evaluators who will independently score the same interaction.</div>')+
+ '</div>';
+ const sessions=S.calibrations;
+ const list=sessions.length?sessions.map(c=>{
+  const ag=calibAgreement(c);
+  const submittedCount=c.participants.filter(p=>c.responses[p]).length;
+  return '<div class="calib-card" onclick="act.openCalibration(\''+c.id+'\')"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">'+
+   '<div><div class="calib-title">'+esc(c.title||"Untitled session")+'</div>'+
+   '<div class="calib-meta">'+c.channel+' · '+c.participants.length+' participants · '+submittedCount+'/'+c.participants.length+' submitted · '+(c.status==="Revealed"?"Revealed":"Open")+'</div></div>'+
+   (ag?'<div class="calib-agree" style="color:'+(ag.pct>=80?"var(--meet)":ag.pct>=60?"var(--part)":"var(--fail)")+'">'+ag.pct+'% agreement</div>':'<div class="calib-meta">Waiting for submissions</div>')+
+   '</div></div>';
+ }).join(""):'<div class="emptynote">No calibration sessions yet.</div>';
+ return '<div class="page"><div class="pagehead"><h1>Calibration</h1><p>Have two or more evaluators independently score the same interaction, then compare results to keep the team consistent. Answers stay hidden from each other until the session is revealed.</p></div>'+
+  createCard+list+'</div>';
+}
+function wireCalibrationList(){
+ wireMultiCombo("calibparticipant",EVALUATORS,S.calibDraft.participants,()=>render());
+ const t=document.getElementById("calib-title");if(t)t.addEventListener("input",()=>{S.calibDraft.title=t.value;});
+}
+function viewCalibrationDetail(){
+ const c=S.calibrations.find(x=>x.id===S.calibOpenId);
+ if(!c){S.calibOpenId=null;return viewCalibrationList();}
+ const me=S.session.evaluator;
+ const iAmParticipant=c.participants.includes(me);
+ const iSubmitted=!!c.responses[me];
+ const submittedCount=c.participants.filter(p=>c.responses[p]).length;
+ let body="";
+ if(iAmParticipant&&!iSubmitted&&c.status!=="Revealed"){
+  const schema=S.schema.channels[c.channel];
+  const secs=schema.sections.map(sec=>'<div class="section" style="margin-bottom:10px"><div class="sec-inner" style="padding:14px 16px">'+
+   '<div class="sec-name" style="margin-bottom:8px">'+esc(sec.name)+'</div>'+
+   sec.criteria.map(cr=>{
+    const st=(c._draft&&c._draft[cr.id])||{};
+    const seg=OPTIONS.map(o=>{const t=toneVars(o.tone),on=st.value===o.id;
+     return '<button class="seg-btn '+(on?"on":"")+'" data-c="'+cr.id+'" data-v="'+o.id+'" style="'+(on?"background:"+t.solid+";border-color:"+t.solid+";":"color:"+t.fg+";")+'">'+ic({Yes:"check",Partially:"dot",NA:"minus",No:"x"}[o.id],13)+' '+o.label+'</button>';
+    }).join("");
+    return '<div class="crit"><div class="crit-top"><div class="crit-info"><div class="crit-name">'+esc(cr.name)+'</div></div><div class="seg">'+seg+'</div></div></div>';
+   }).join("")+
+  '</div></div>').join("");
+  body='<div class="card"><div class="card-h">Score this interaction independently</div>'+secs+
+   '<button class="primary" style="margin-top:8px" onclick="act.submitCalibScore()">'+ic("check2",15)+' Submit my scores</button></div>';
+ } else if(iAmParticipant&&iSubmitted&&c.status!=="Revealed"){
+  body='<div class="card"><div class="card-h">Waiting for other participants</div>'+
+   c.participants.map(p=>'<div class="participant-row"><span>'+esc(p)+'</span><span class="part-pill '+(c.responses[p]?"done":"wait")+'">'+(c.responses[p]?"Submitted":"Waiting")+'</span></div>').join("")+
+   (submittedCount>=2?'<button class="tool wide" style="margin-top:12px" onclick="act.revealCalibration()">'+ic("spark",13)+' Reveal results now</button>':'<div class="emptynote sm" style="margin-top:10px">Need at least 2 submissions to reveal.</div>')+
+   '</div>';
+ } else if(c.status!=="Revealed"){
+  body='<div class="card"><div class="card-h">Session in progress</div>'+
+   c.participants.map(p=>'<div class="participant-row"><span>'+esc(p)+'</span><span class="part-pill '+(c.responses[p]?"done":"wait")+'">'+(c.responses[p]?"Submitted":"Waiting")+'</span></div>').join("")+
+   '<div class="emptynote sm" style="margin-top:10px">You are not a participant in this session, so your view is read-only.'+(submittedCount>=2?'':'') +'</div>'+
+   (submittedCount>=2?'<button class="tool wide" style="margin-top:12px" onclick="act.revealCalibration()">'+ic("spark",13)+' Reveal results now</button>':'')+
+  '</div>';
+ } else {
+  const ag=calibAgreement(c);
+  const schema=S.schema.channels[c.channel];
+  const submitted=c.participants.filter(p=>c.responses[p]);
+  const rows=schema.sections.flatMap(s=>s.criteria).map(cr=>{
+   const vals=submitted.map(p=>(c.responses[p][cr.id]||{}).value||"—");
+   const agree=new Set(vals).size===1;
+   return '<tr><td>'+esc(cr.name)+'</td>'+submitted.map((p,i)=>'<td><span class="calib-cell '+(agree?"calib-agree-yes":"calib-agree-no")+'">'+esc(vals[i])+'</span></td>').join("")+'</tr>';
+  }).join("");
+  body='<div class="card" style="margin-bottom:14px"><div class="card-h">Agreement summary</div>'+
+   '<div class="calib-agree" style="font-size:32px;color:'+(ag&&ag.pct>=80?"var(--meet)":ag&&ag.pct>=60?"var(--part)":"var(--fail)")+'">'+(ag?ag.pct:0)+'%</div>'+
+   '<div class="fu-meta">'+(ag?ag.agree+" of "+ag.total+" criteria had full agreement across "+submitted.length+" evaluators":"Not enough submissions")+'</div></div>'+
+   '<div class="card"><div class="card-h">Side-by-side scoring</div><div style="overflow-x:auto"><table class="calib-table"><thead><tr><th>Criterion</th>'+submitted.map(p=>'<th>'+esc(p)+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+ }
+ return '<div class="page"><button class="back" onclick="act.closeCalibration()">'+ic("arrowl",14)+' Calibration</button>'+
+  '<div class="pagehead"><h1>'+esc(c.title||"Calibration session")+'</h1><p>'+c.channel+' · '+c.participants.length+' participants · '+(c.status==="Revealed"?"Revealed":"Open")+'</p></div>'+
+  body+'</div>';
+}
+function wireCalibrationDetail(){
+ const c=S.calibrations.find(x=>x.id===S.calibOpenId);if(!c)return;
+ const me=S.session.evaluator;
+ if(c.participants.includes(me)&&!c.responses[me]&&c.status!=="Revealed"){
+  c._draft=c._draft||{};
+  document.querySelectorAll(".seg-btn").forEach(b=>b.addEventListener("click",()=>{
+   c._draft[b.dataset.c]=c._draft[b.dataset.c]||{};c._draft[b.dataset.c].value=b.dataset.v;render();
+  }));
+ }
+}
+
 function viewAnalytics(){
  const done=S.evals.filter(e=>e.status!=="Draft");
  if(!done.length)return '<div class="page"><div class="pagehead"><h1>Analytics</h1><p>Team-level quality metrics.</p></div><div class="emptynote">No finalized evaluations yet.</div></div>';
@@ -1228,16 +1525,16 @@ function quarterlyTableHTML(name,n){
 }
 function quarterlyReportHTML(){
  const names=[...new Set(S.evals.filter(e=>e.status!=="Draft").map(e=>e.agent))].sort();
- if(!names.length)return '<div class="card span2" style="margin-top:14px"><div class="card-h">Reporte trimestral por agente</div><div class="emptynote sm">No hay evaluaciones finalizadas todavía.</div></div>';
+ if(!names.length)return '<div class="card span2" style="margin-top:14px"><div class="card-h">Quarterly report by agent</div><div class="emptynote sm">No finalized evaluations yet.</div></div>';
  const sel=(S.analyticsAgent&&names.includes(S.analyticsAgent))?S.analyticsAgent:names[0];
  const n=S.analyticsMonths||3;
  const trend=agentTrendData(sel);
  return '<div class="card span2" style="margin-top:14px" id="qtr-card">'+
   '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">'+
-   '<div class="card-h" style="margin-bottom:0">Reporte trimestral por agente</div>'+
+   '<div class="card-h" style="margin-bottom:0">Quarterly report by agent</div>'+
    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
     '<label class="field sm" style="margin:0"><span style="font-size:10px">Meses</span><input id="qtr-months" type="number" min="2" max="12" step="1" value="'+n+'" style="width:64px;border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:13px;font-family:inherit;background:var(--card);color:var(--ink)"/></label>'+
-    '<div style="min-width:210px">'+comboHTML("analyticsagent",sel,"Buscar agente…")+'</div>'+
+    '<div style="min-width:210px">'+comboHTML("analyticsagent",sel,"Search agent…")+'</div>'+
     '<button class="dlbtn" onclick="act.downloadQuarterlyPDF()">'+ic("save",13)+' PDF</button>'+
     '<button class="dlbtn" style="background:var(--soft);color:var(--ink)" onclick="act.downloadQuarterlyImage()">'+ic("save",13)+' Image</button>'+
    '</div>'+
@@ -1464,11 +1761,11 @@ act.saveSchema=function(){
   .map(([k,c])=>({label:c.label,total:c.sections.reduce((s,sec)=>s+sec.criteria.reduce((a,cr)=>a+cr.weight,0),0)}))
   .filter(x=>x.total!==100);
  if(bad.length){
-  const msg="Los siguientes canales no suman 100 puntos: "+bad.map(b=>b.label+" ("+b.total+")").join(", ")+
-   ". Esto puede hacer que el score no sea comparable entre evaluaciones. ¿Guardar de todas formas?";
+  const msg="The following channels don't add up to 100 points: "+bad.map(b=>b.label+" ("+b.total+")").join(", ")+
+   ". This can make scores non-comparable across evaluations. Save anyway?";
   if(!confirm(msg))return;
  }
- saveSchema(sch).then(()=>alert("Configuration saved. Se aplica a nuevas evaluaciones y es visible para todo el equipo."));
+ saveSchema(sch).then(()=>alert("Configuration saved. Applies to new evaluations and is visible to the whole team."));
 };
 
 /* =============================== EXCEL IMPORT ==============================
@@ -1553,15 +1850,15 @@ function viewImportPreview(){
    '<label><input type="checkbox" '+(r.include?"checked":"")+' '+(r.duplicate?"disabled":"")+' onchange="act.toggleImportRow('+i+')"/>'+
    '<div><div class="imp-name">'+esc(r.agent)+' <span style="font-weight:500;color:var(--ink2)">· '+r.channel+' · '+fmtDateUS(r.evalDate)+'</span></div>'+
    '<div class="imp-meta">'+r.pct+'% ('+esc(r.rating)+') · Evaluator: '+esc(r.evaluator||"—")+' · '+r.answered+'/'+r.total+' criteria answered</div>'+
-   (r.duplicate?'<div class="imp-warn">'+ic("alert",11)+' Ya existe una evaluación equivalente — se omitirá</div>':'')+
-   (incomplete&&!r.duplicate?'<div class="imp-warn">'+ic("alert",11)+' Hoja incompleta — algunos criterios no tenían respuesta</div>':'')+
+   (r.duplicate?'<div class="imp-warn">'+ic("alert",11)+' An equivalent evaluation already exists — this will be skipped</div>':'')+
+   (incomplete&&!r.duplicate?'<div class="imp-warn">'+ic("alert",11)+' Incomplete sheet — some criteria had no response</div>':'')+
    '</div></label><span class="imp-sheet">'+esc(r.sheetName)+'</span></div>';
  }).join("");
  const includeCount=rows.filter(r=>r.include&&!r.duplicate).length;
- return '<div class="page"><div class="pagehead"><h1>Import preview</h1><p>Se detectaron '+rows.length+' evaluación(es) en <b>'+esc(S.importFileName||"")+'</b>. Revisa y confirma antes de importarlas — se agregan como evaluaciones finalizadas, con el mismo puntaje y comentarios del archivo original.</p></div>'+
-  '<div class="card">'+(rowsHtml||'<div class="emptynote sm">No se encontraron evaluaciones completas.</div>')+'</div>'+
-  '<div class="set-actions"><button class="primary" '+(includeCount?"":"disabled")+' onclick="act.confirmImport()">'+ic("save",15)+' Importar '+includeCount+' evaluación(es)</button>'+
-  '<button class="tool" onclick="act.cancelImport()">Cancelar</button></div></div>';
+ return '<div class="page"><div class="pagehead"><h1>Import preview</h1><p>Found '+rows.length+' evaluation(s) in <b>'+esc(S.importFileName||"")+'</b>. Review and confirm before importing \u2014 they are added as finalized evaluations, with the same score and comments as the original file.</p></div>'+
+  '<div class="card">'+(rowsHtml||'<div class="emptynote sm">No completed evaluations were found.</div>')+'</div>'+
+  '<div class="set-actions"><button class="primary" '+(includeCount?"":"disabled")+' onclick="act.confirmImport()">'+ic("save",15)+' Import '+includeCount+' evaluation(s)</button>'+
+  '<button class="tool" onclick="act.cancelImport()">Cancel</button></div></div>';
 }
 
 /* =============================== PDF EXPORT =============================== */
@@ -1686,7 +1983,7 @@ function buildInteractionDoc(ev){
  return doc;
 }
 function interactionFilename(ev){const safe=(ev.agent||"agent").replace(/[^a-z0-9]+/gi,"_");return "BACS_QA_"+safe+"_"+(ev.evalDate||new Date().toISOString().slice(0,10))+"_"+String(ev.id).replace(/[^a-z0-9]+/gi,"").slice(-5)+".pdf";}
-function exportPDF(){const ev=S.draft;if(!ev||!ev.agent){alert("Selecciona un agente primero para exportar.");return;}const doc=buildInteractionDoc(ev);if(!doc){exportPDFfallback(ev);return;}doc.save(interactionFilename(ev));}
+function exportPDF(){const ev=S.draft;if(!ev||!ev.agent){alert("Select an agent first to export.");return;}const doc=buildInteractionDoc(ev);if(!doc){exportPDFfallback(ev);return;}doc.save(interactionFilename(ev));}
 
 /* ---- period scorecard (consolidates an agent's evaluations, like the Feedback tab) ---- */
 function scorecardThresholds(role){const r=(role||"").trim();if(r==="T1"||r==="New Hire")return{strong:0.8,observe:0.7};if(r==="T2")return{strong:0.85,observe:0.75};return{strong:0.9,observe:0.8};}
