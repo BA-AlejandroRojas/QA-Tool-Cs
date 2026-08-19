@@ -232,6 +232,7 @@ button{font-family:inherit;}
 .combo-input:disabled{opacity:.6;}
 .combo-caret{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none;display:flex;}
 .combo-menu{position:absolute;z-index:60;top:calc(100% + 4px);left:0;right:0;max-height:230px;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(15,23,41,.18);padding:4px;}
+.combo-menu.flip-up{top:auto;bottom:calc(100% + 4px);box-shadow:0 -12px 32px rgba(15,23,41,.18);}
 .combo-menu.hidden{display:none;}
 .combo-opt{padding:8px 10px;border-radius:7px;font-size:13px;cursor:pointer;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .combo-opt:hover,.combo-opt.active{background:var(--soft);}
@@ -264,7 +265,7 @@ button{font-family:inherit;}
 
 /* ------------------------------- login screen ---------------------------- */
 .login-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(1200px 600px at 20% 10%,#1e1b4b 0%,#0f1729 55%,#0b0f17 100%);padding:24px;}
-.login-card{width:100%;max-width:420px;background:var(--card);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.35);}
+.login-card{width:100%;max-width:420px;min-height:480px;background:var(--card);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.35);}
 .login-top{background:linear-gradient(135deg,#4f46e5,#8b5cf6);padding:34px 32px 28px;color:#fff;text-align:center;border-radius:20px 20px 0 0;}
 .login-logo{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.18);display:grid;place-items:center;margin:0 auto 14px;color:#fff;}
 .login-top h1{font-size:19px;font-weight:800;margin:0;letter-spacing:-.3px;}
@@ -700,12 +701,19 @@ function wireCombo(id,options,current,onSelect){
  let filtered=options.slice(),active=-1,committed=current||"";
  const paint=()=>{const q=input.value.trim().toLowerCase();filtered=options.filter(o=>o.toLowerCase().includes(q));
   menu.innerHTML=filtered.length?filtered.map((o,i)=>'<div class="combo-opt '+(o===committed?"sel":"")+(i===active?" active":"")+'" data-v="'+esc(o)+'">'+esc(o)+'</div>').join(""):'<div class="combo-empty">No matches</div>';};
- const open=()=>{menu.classList.remove("hidden");active=-1;paint();};
+ /* Flip the menu above the input instead of below when there isn't enough
+    viewport room underneath it (e.g. a short card like the login screen) —
+    otherwise the dropdown visually hangs off the card with nothing behind it. */
+ const reposition=()=>{
+  const rect=input.getBoundingClientRect(),spaceBelow=window.innerHeight-rect.bottom,needed=238;
+  menu.classList.toggle("flip-up",spaceBelow<needed&&rect.top>spaceBelow);
+ };
+ const open=()=>{menu.classList.remove("hidden");active=-1;paint();reposition();};
  const close=()=>menu.classList.add("hidden");
  const commit=v=>{committed=v;input.value=v;close();onSelect(v);};
  const scroll=()=>{const el=menu.querySelector(".combo-opt.active");if(el)el.scrollIntoView({block:"nearest"});};
  input.addEventListener("focus",open);
- input.addEventListener("input",()=>{active=-1;menu.classList.remove("hidden");paint();});
+ input.addEventListener("input",()=>{active=-1;menu.classList.remove("hidden");paint();reposition();});
  input.addEventListener("keydown",e=>{
   if(e.key==="ArrowDown"){e.preventDefault();active=Math.min(active+1,filtered.length-1);paint();scroll();}
   else if(e.key==="ArrowUp"){e.preventDefault();active=Math.max(active-1,0);paint();scroll();}
@@ -723,12 +731,16 @@ function wireMultiCombo(id,options,selectedArr,onChange){
  const available=()=>options.filter(o=>!selectedArr.includes(o));
  const paint=()=>{const q=input.value.trim().toLowerCase();filtered=available().filter(o=>o.toLowerCase().includes(q));
   menu.innerHTML=filtered.length?filtered.map((o,i)=>'<div class="combo-opt'+(i===active?" active":"")+'" data-v="'+esc(o)+'">'+esc(o)+'</div>').join(""):'<div class="combo-empty">No matches</div>';};
- const open=()=>{menu.classList.remove("hidden");active=-1;paint();};
+ const reposition=()=>{
+  const rect=input.getBoundingClientRect(),spaceBelow=window.innerHeight-rect.bottom,needed=238;
+  menu.classList.toggle("flip-up",spaceBelow<needed&&rect.top>spaceBelow);
+ };
+ const open=()=>{menu.classList.remove("hidden");active=-1;paint();reposition();};
  const close=()=>menu.classList.add("hidden");
  const commit=v=>{selectedArr.push(v);input.value="";close();onChange();};
  const scroll=()=>{const el=menu.querySelector(".combo-opt.active");if(el)el.scrollIntoView({block:"nearest"});};
  input.addEventListener("focus",open);
- input.addEventListener("input",()=>{active=-1;menu.classList.remove("hidden");paint();});
+ input.addEventListener("input",()=>{active=-1;menu.classList.remove("hidden");paint();reposition();});
  input.addEventListener("keydown",e=>{
   if(e.key==="ArrowDown"){e.preventDefault();active=Math.min(active+1,filtered.length-1);paint();scroll();}
   else if(e.key==="ArrowUp"){e.preventDefault();active=Math.max(active-1,0);paint();scroll();}
