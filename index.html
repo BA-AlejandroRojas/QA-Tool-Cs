@@ -264,12 +264,12 @@ button{font-family:inherit;}
 
 /* ------------------------------- login screen ---------------------------- */
 .login-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(1200px 600px at 20% 10%,#1e1b4b 0%,#0f1729 55%,#0b0f17 100%);padding:24px;}
-.login-card{width:100%;max-width:420px;background:var(--card);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden;}
-.login-top{background:linear-gradient(135deg,#4f46e5,#8b5cf6);padding:34px 32px 28px;color:#fff;text-align:center;}
+.login-card{width:100%;max-width:420px;background:var(--card);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.35);}
+.login-top{background:linear-gradient(135deg,#4f46e5,#8b5cf6);padding:34px 32px 28px;color:#fff;text-align:center;border-radius:20px 20px 0 0;}
 .login-logo{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.18);display:grid;place-items:center;margin:0 auto 14px;color:#fff;}
 .login-top h1{font-size:19px;font-weight:800;margin:0;letter-spacing:-.3px;}
 .login-top p{font-size:12.5px;color:#e0e7ff;margin:6px 0 0;}
-.login-body{padding:28px 32px 30px;display:flex;flex-direction:column;gap:16px;}
+.login-body{padding:28px 32px 30px;display:flex;flex-direction:column;gap:16px;position:relative;}
 .login-step-lbl{font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px;}
 .login-name-pill{display:flex;align-items:center;justify-content:space-between;background:var(--soft2);border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:13.5px;font-weight:600;}
 .login-name-pill button{border:0;background:transparent;color:var(--pri);font-size:12px;font-weight:600;cursor:pointer;}
@@ -283,7 +283,7 @@ button{font-family:inherit;}
 .login-remember{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);}
 .login-forgot{font-size:11.5px;color:var(--mut);text-align:center;}
 .login-forgot button{border:0;background:transparent;color:var(--pri);font-weight:600;cursor:pointer;font-size:11.5px;}
-.login-foot{font-size:10.5px;color:var(--mut);text-align:center;padding:14px 32px 22px;line-height:1.5;border-top:1px solid var(--line);}
+.login-foot{font-size:10.5px;color:var(--mut);text-align:center;padding:14px 32px 22px;line-height:1.5;border-top:1px solid var(--line);border-radius:0 0 20px 20px;}
 .session-pill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--side-txt);padding:8px 3px;}
 .session-pill b{color:#fff;font-weight:700;}
 .logoutbtn{border:0;background:transparent;color:#64748b;font-size:11px;font-weight:600;cursor:pointer;margin-left:auto;}
@@ -385,7 +385,12 @@ const DEFAULT_SCHEMA={channels:{
   {id:"comm",name:"Communication Skills",criteria:[{id:"grammar",name:"Grammar & Spelling",desc:"Proper grammar, spelling, punctuation, and sentence structure.",weight:10},{id:"formatting",name:"Proper Formatting",desc:"Correct font, size, color, spacing.",weight:10},{id:"timely",name:"Timely Response",desc:"SLA compliance — 1 hour.",weight:15}]},
   {id:"closure",name:"Closure & Extra Assistance",criteria:[{id:"signature",name:"Signature Included",desc:"Email contains required signature.",weight:5},{id:"promos",name:"Extra Assistance – Promotions & Offers",desc:"Offered relevant promotions aligned to customer profile.",weight:10}]}]}
 }};
-const AGENTS=["Adrian Navarro","Andrey Castillo","Anilu Guzman","Carlos Amador","Carlos Ortiz","Carolina Castro","Charlene Rose","Daniel Gonzalez","Daniel Leandro","David Cruz","David Vogler","Diego Matamoros","Eddison Prendas","Elena Rojas","Elliot Navarro","Emerson Hernandez","Fer Blanco","Graciela Bravo","Ignacio Blanco","Isaac Barrantes","Isaac Porras","Israel Aburto","Jose David Shedden","Jose Pablo Robles","Josué Vargas","Julian Mena","Kemar Clare","Kendall Montoya","Kevin Salazar","Kevin Zamora","Keysha Cross","Luis Carvajal","Luis Fernando Ruiz","Maria Jose Quiros","Mariana Bejarano","Mariana Varela","Marlon Wright","Mauricio Alvarado","Michelle Saborio","Naigell Beckford","Naomy Sanchez","Nicole Román","Pablo Guzman","Phillip Desanti","Rory Bulgarelli","Samuel Carballo","Sebastian Puerta","Sebastian Rivera","Sheydron Clark","Silvana Suarez","Stephannie Cunningham","Tamara Donaire","Thimy Gonzalez","Valerie Alfaro","Vanessa Umaña","Yasser Quiros"];
+/* Roster sourced from Schedule_from_08-17_to_08-23.pdf (the "Agent", "3rd Party
+   Squad", "VIP", and "Processing Squad" tables only). Supervisors, Floor
+   Support, Training Squad, and Workforce staff from that same schedule are
+   intentionally excluded — they lead/coach/plan, they aren't the line agents
+   being QA'd. */
+const AGENTS=["Adrián Navarro","Alejandro Rojas","Andrey Castillo","Anilu Guzmán Villalobos","Carlos Alejandro Amador Luna","Carlos Amador","Carlos Ortiz","Carolina Castro","David Vogler","Eddison Prendas","Elena Rojas","Elliot Navarro","Emerson Hernández","Fer Blanco","Graciela Bravo","Ignacio Blanco","Isaac Barrantes Alvarado","Isaac Porras","Israel Aburto","Ixchel Coto","Javier Emilio Martínez Suárez","José María Cartín Peralta","Josué Vargas","Julián Mena","Keisha Cross Brown","Kendall Montoya","Keylor Andrés Solís Garro","Kevin Salazar","Kevin Zamora","Luis Carvajal","María José Quiros Quiros","Mariana Bejarano","Mariana Varela","Marlon Wright","Naigell Beckford","Naomy Sánchez","Nicole Román","Nyssa Kittel","Phillip Desanti","Rory Bulgarelli","Samuel Carballo","Sebastián Puerta","Sebastián Rivera","Stephannie Cunningham","Tamara Donaire","Thimy González","Valerie Alfaro","Vanessa Umaña","Yasser Quiros"];
 const EVALUATORS=["Adriana Vasquez","Alfred Villalobos","Amy","Carlos Barrantes","Isabelle Morales","Kendra Temple","Kunti Solis","Maria Jose Fallas","Mario Acon","Natalia Sibaja","Nicole Valverde","Pablo Retana","Victor Ramirez"];
 const ROLES=["New Hire","T1","T2","T3","3rd Party Specialist","Processing Squad","Deposits","Payouts","Night Shift","Senior","Sup / Floor Support","VIP"];
 const OPTIONS=[{id:"Yes",label:"Meets",tone:"meet"},{id:"Partially",label:"Partial",tone:"part"},{id:"NA",label:"N/A",tone:"meet"},{id:"No",label:"Fail",tone:"fail"}];
